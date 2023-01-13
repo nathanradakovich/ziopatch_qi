@@ -1,0 +1,6 @@
+Analyses:
+
+- Average demographix
+- Age
+- was cardiologist or ordering provider aware of results?
+- was patient contacted?
