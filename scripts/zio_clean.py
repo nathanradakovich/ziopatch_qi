@@ -18,37 +18,59 @@ import numpy as np
 from matplotlib import pyplot as plt
 import tableone
 from zio_config import (cols_i_want,
-        col_replace_dic)
+        col_replace_dic,prov_dic,y_n_cols,
+        y_n_dic,
+        notification_dic,notifier_dic,reason_dic)
+from utils import trimandlower
 import seaborn as sns
 import tableone 
-#%%
+
 PATH = "../"
 DATA = "data/"
 
 review_df = pd.read_csv(PATH+\
-        DATA+'zio_review_20221215.csv',
+        DATA+'zio_20230116_trimmed.csv',
         encoding="ISO-8859-1")
+
+review_df = trimandlower(review_df)
+#%%
 
 review_df = review_df[cols_i_want]
 review_df.columns = [col_replace_dic[item] for item in cols_i_want]
+
 #%%
-review_df['time_to_notification'] = pd.to_datetime(review_df['date_pt_told'],errors='coerce') - \
-        pd.to_datetime(review_df['comp_time'],errors='coerce') 
+# get time to notification
+review_df['time_to_notification'] = pd.to_datetime(review_df['notification_date'],errors='coerce') - \
+        pd.to_datetime(review_df['results_date'],errors='coerce') 
 review_df['time_to_notification'] = review_df['time_to_notification'].dt.days
 
-review_df['any_af'] = ((review_df['new_af'] == 'Y') | 
-        (review_df['cont_af'] == 'Y'))
-review_df['any_af'] = np.where(review_df['any_af'], 'Y', 'N')
-        
+# fix all y/n cols:
+for col in y_n_cols:
+        review_df[col] = review_df[col].map(y_n_dic)
+review_df['study_reason'] = review_df['study_reason'].map(reason_dic)
+review_df['notification_means'] = review_df['notification_means'].map(notification_dic)
+review_df['who_notified'] = review_df['who_notified'].map(notifier_dic)
+review_df['ord_prov'] = review_df['ord_prov'].map(prov_dic)
+
 # %%
-#Graph of # with new afib who were notified c/w no new AF
-
-
+review_df.to_csv(PATH+DATA+'zio_cleaned.csv')
 #%%
 # Table one:
-t1cols = ['90dcan', 'age','new_af','cont_af','time_to_notification',
-        'ord_prov','cards_prov_contact','any_af',]
-t1cat = ['new_af','cont_af','ord_prov','cards_prov_contact','any_af']
+t1cols = ['age', 
+        # 'study_reason', 
+        'ord_prov', 'ord_notified',
+       'who_notified',# 'results_date', 'notification_date',
+       'notification_means', 'new_af', 
+#        'other_findings',
+       'change_rec', 'cards_contacted',
+       'time_to_notification',
+       ]
+t1cat = [
+        # 'study_reason', 
+        'ord_prov', 'ord_notified',
+       'who_notified','notification_means', 'new_af', 
+       'change_rec', 'cards_contacted'
+       ]
 
 mytable = tableone.TableOne(review_df, columns=t1cols, categorical=t1cat, 
         # groupby=groupby, nonnormal=nonnormal, rename=labels, pval=False
@@ -79,11 +101,11 @@ cat_plot = sns.catplot(data=review_df,
         # title='Time to notification by \nresult and ordering provider', 
         kind="swarm",
         x="time_to_notification", 
-        y="any_af", 
+        y="new_af", 
         hue="ord_prov"
         )
 
-plt.legend(loc='upper left')
+# plt.legend(loc='upper left')
 cat_plot.set_ylabels("Any AF")
 cat_plot.set_xlabels("Time to Notification")
 plt.title('Time to Notification By Provider')
